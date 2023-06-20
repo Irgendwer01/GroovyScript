@@ -26,6 +26,7 @@ import com.cleanroommc.groovyscript.compat.mods.draconicevolution.DraconicEvolut
 import com.cleanroommc.groovyscript.compat.mods.enderio.EnderIO;
 import com.cleanroommc.groovyscript.compat.mods.essentialcraft.EssentialCraft;
 import com.cleanroommc.groovyscript.compat.mods.evilcraft.EvilCraft;
+import com.cleanroommc.groovyscript.compat.mods.exnihilo.ExNihilo;
 import com.cleanroommc.groovyscript.compat.mods.extendedcrafting.ExtendedCrafting;
 import com.cleanroommc.groovyscript.compat.mods.extrabotany.ExtraBotany;
 import com.cleanroommc.groovyscript.compat.mods.extrautils2.ExtraUtils2;
@@ -107,6 +108,7 @@ public class ModSupport {
     public static final GroovyContainer<ExtendedCrafting> EXTENDED_CRAFTING = new InternalModContainer<>("extendedcrafting", "Extended Crafting", ExtendedCrafting::new);
     public static final GroovyContainer<ExtraBotany> EXTRA_BOTANY = new InternalModContainer<>("extrabotany", "Extra Botany", ExtraBotany::new);
     public static final GroovyContainer<ExtraUtils2> EXTRA_UTILITIES_2 = new InternalModContainer<>("extrautils2", "Extra Utilities 2", ExtraUtils2::new, "extrautilities2");
+    public static final GroovyContainer<ExNihilo> EX_NIHILO = new Container<>("exnihilocreatio", "Ex Nihilo Creatio", ExNihilo::new);
     public static final GroovyContainer<Forestry> FORESTRY = new InternalModContainer<>("forestry", "Forestry", Forestry::new);
     public static final GroovyContainer<FutureMC> FUTURE_MC = new InternalModContainer<>("futuremc", "Future MC", FutureMC::new);
     public static final GroovyContainer<HorsePower> HORSE_POWER = new InternalModContainer<>("horsepower", "Horse Power", HorsePower::new);
