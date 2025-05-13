@@ -15,7 +15,7 @@ import com.cleanroommc.groovyscript.documentation.linkgenerator.LinkGeneratorHoo
 import com.cleanroommc.groovyscript.event.EventHandler;
 import com.cleanroommc.groovyscript.helper.JsonHelper;
 import com.cleanroommc.groovyscript.helper.StyleConstant;
-import com.cleanroommc.groovyscript.mapper.ObjectMapper;
+import com.cleanroommc.groovyscript.mapper.AbstractObjectMapper;
 import com.cleanroommc.groovyscript.mapper.ObjectMapperManager;
 import com.cleanroommc.groovyscript.network.CReload;
 import com.cleanroommc.groovyscript.network.NetworkHandler;
@@ -74,7 +74,7 @@ import java.util.Random;
         modid = GroovyScript.ID,
         name = GroovyScript.NAME,
         version = GroovyScript.VERSION,
-        dependencies = "after:mixinbooter@[8.0,);",
+        dependencies = "after:mixinbooter@[8.0,);after:extendedcrafting@[1.6.0,);",
         guiFactory = "com.cleanroommc.groovyscript.DisabledConfigGui")
 @Mod.EventBusSubscriber(modid = GroovyScript.ID)
 public class GroovyScript {
@@ -151,9 +151,8 @@ public class GroovyScript {
         // called via mixin in between construction and fml pre init
         ObjectMapperManager.init();
         StandardInfoParserRegistry.init();
-        VanillaModule.initializeBinding();
         ModSupport.init();
-        for (ObjectMapper<?> goh : ObjectMapperManager.getObjectMappers()) {
+        for (AbstractObjectMapper<?> goh : ObjectMapperManager.getObjectMappers()) {
             getSandbox().registerBinding(goh);
         }
         if (FMLLaunchHandler.isDeobfuscatedEnvironment()) Documentation.generate();
@@ -192,6 +191,7 @@ public class GroovyScript {
     @Mod.EventHandler
     public void onServerLoad(FMLServerStartingEvent event) {
         event.registerServerCommand(new GSCommand());
+        VanillaModule.command.onStartServer(event.getServer());
     }
 
     @SubscribeEvent
@@ -203,33 +203,27 @@ public class GroovyScript {
         }
     }
 
-    @NotNull
-    public static String getScriptPath() {
+    public static @NotNull String getScriptPath() {
         return getScriptFile().getPath();
     }
 
-    @NotNull
-    public static File getMinecraftHome() {
+    public static @NotNull File getMinecraftHome() {
         return SandboxData.getMinecraftHome();
     }
 
-    @NotNull
-    public static File getScriptFile() {
+    public static @NotNull File getScriptFile() {
         return SandboxData.getScriptFile();
     }
 
-    @NotNull
-    public static File getResourcesFile() {
+    public static @NotNull File getResourcesFile() {
         return SandboxData.getResourcesFile();
     }
 
-    @NotNull
-    public static File getRunConfigFile() {
+    public static @NotNull File getRunConfigFile() {
         return SandboxData.getRunConfigFile();
     }
 
-    @NotNull
-    public static GroovyScriptSandbox getSandbox() {
+    public static @NotNull GroovyScriptSandbox getSandbox() {
         if (sandbox == null) {
             throw new IllegalStateException("GroovyScript is not yet loaded or failed to load!");
         }
@@ -266,7 +260,7 @@ public class GroovyScript {
         if (!Files.exists(main.toPath())) {
             try {
                 main.getParentFile().mkdirs();
-                Files.write(main.toPath(), "\nprintln('Hello World!')\n".getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+                Files.write(main.toPath(), "\nlog.info('Hello World!')\n".getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

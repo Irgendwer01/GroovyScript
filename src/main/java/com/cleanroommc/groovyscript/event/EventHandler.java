@@ -33,10 +33,12 @@ import net.minecraftforge.client.event.ClientChatEvent;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.ModelRegistryEvent;
 import net.minecraftforge.client.event.TextureStitchEvent;
+import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.config.Config;
 import net.minecraftforge.common.config.ConfigManager;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.world.ExplosionEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
@@ -79,6 +81,13 @@ public class EventHandler {
     }
 
     @SubscribeEvent
+    public static void createSpawnPosition(WorldEvent.CreateSpawnPosition event) {
+        // only want to execute this for the overworld
+        var target = DimensionManager.getWorld(0);
+        if (event.getWorld() == target) VanillaModule.gameRule.applyDefaultGameRules(event.getWorld().getGameRules());
+    }
+
+    @SubscribeEvent
     public static void playerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         // clear all errors and post
         if (!event.player.world.isRemote) {
@@ -104,7 +113,7 @@ public class EventHandler {
         if (tag.hasKey(EntityPlayer.PERSISTED_NBT_TAG)) {
             data = tag.getCompoundTag(EntityPlayer.PERSISTED_NBT_TAG);
         }
-        if (VanillaModule.player.testingStartingItems || !data.getBoolean(Player.GIVEN_ITEMS)) {
+        if (VanillaModule.player.isTestingStartingItems() || !data.getBoolean(Player.GIVEN_ITEMS)) {
             VanillaModule.player.addToInventory(event.player.inventory);
             data.setBoolean(Player.GIVEN_ITEMS, true);
             tag.setTag(EntityPlayer.PERSISTED_NBT_TAG, data);
@@ -136,8 +145,8 @@ public class EventHandler {
             }
             if (craftResult != null) {
                 IRecipe recipe = craftResult.getRecipeUsed();
-                if (recipe instanceof ICraftingRecipe) {
-                    Closure<Void> recipeAction = ((ICraftingRecipe) recipe).getRecipeAction();
+                if (recipe instanceof ICraftingRecipe iCraftingRecipe) {
+                    Closure<Void> recipeAction = iCraftingRecipe.getRecipeAction();
                     if (recipeAction != null) {
                         GroovyLog.get().infoMC("Fire Recipe Action");
                         ClosureHelper.call(recipeAction, event.crafting, new CraftingInfo(inventoryCrafting, player));
@@ -150,8 +159,8 @@ public class EventHandler {
     @SubscribeEvent
     public static void onExplosion(ExplosionEvent.Detonate event) {
         for (Entity entity : event.getAffectedEntities()) {
-            if (entity instanceof EntityItem) {
-                VanillaModule.inWorldCrafting.explosion.findAndRunRecipe((EntityItem) entity);
+            if (entity instanceof EntityItem entityItem) {
+                VanillaModule.inWorldCrafting.explosion.findAndRunRecipe(entityItem);
             }
         }
     }

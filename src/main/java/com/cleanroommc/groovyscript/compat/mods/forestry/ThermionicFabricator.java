@@ -6,7 +6,6 @@ import com.cleanroommc.groovyscript.api.IIngredient;
 import com.cleanroommc.groovyscript.core.mixin.forestry.FabricatorRecipeManagerAccessor;
 import com.cleanroommc.groovyscript.helper.Alias;
 import com.cleanroommc.groovyscript.helper.SimpleObjectStream;
-import com.cleanroommc.groovyscript.helper.ingredient.IngredientHelper;
 import com.cleanroommc.groovyscript.helper.ingredient.OreDictIngredient;
 import com.cleanroommc.groovyscript.helper.recipe.AbstractRecipeBuilder;
 import forestry.api.recipes.IFabricatorRecipe;
@@ -99,8 +98,8 @@ public class ThermionicFabricator extends ForestryRegistry<IFabricatorRecipe> {
         if (FabricatorRecipeManagerAccessor.getRecipes().removeIf(recipe -> {
             boolean found = Arrays.stream(input).allMatch(i -> {
                 boolean matches = false;
-                if (i instanceof OreDictIngredient) {
-                    matches = recipe.getOreDicts().contains(((OreDictIngredient) i).getOreDict());
+                if (i instanceof OreDictIngredient oreDictIngredient) {
+                    matches = recipe.getOreDicts().contains(oreDictIngredient.getOreDict());
                 } else {
                     for (int x = 0; x < recipe.getWidth(); x++) {
                         if (recipe.getIngredients().get(x).contains(i.getMatchingStacks()[0])) {
@@ -162,10 +161,8 @@ public class ThermionicFabricator extends ForestryRegistry<IFabricatorRecipe> {
             validateItems(msg, 0, 0, 1, 1);
             validateFluids(msg, 1, 1, 0, 0);
             Carpenter.validatePattern(msg, pattern, keys);
-            for (IIngredient ingredient : keys.values()) {
-                msg.add(IngredientHelper.overMaxSize(ingredient, 1), "Grid input {} must have a stack size of 1", ingredient);
-            }
-            msg.add(IngredientHelper.overMaxSize(catalyst, 1), "Box must have a stack size of 1, got {}", catalyst.getAmount());
+            validateStackSize(msg, 1, "grid input", keys.values());
+            validateStackSize(msg, 1, "catalyst", catalyst);
         }
 
         @Override

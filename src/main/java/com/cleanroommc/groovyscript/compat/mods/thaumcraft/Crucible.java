@@ -87,8 +87,8 @@ public class Crucible extends VirtualizedRegistry<CrucibleRecipe> {
         List<CrucibleRecipe> recipes = new ArrayList<>();
         for (IThaumcraftRecipe iThaumcraftRecipe : ThaumcraftApi.getCraftingRecipes().values()) {
             r = iThaumcraftRecipe;
-            if ((r instanceof CrucibleRecipe) && output.test(((CrucibleRecipe) r).getRecipeOutput())) {
-                recipes.add((CrucibleRecipe) r);
+            if ((r instanceof CrucibleRecipe crucibleRecipe) && output.test(crucibleRecipe.getRecipeOutput())) {
+                recipes.add(crucibleRecipe);
             }
         }
         if (recipes.isEmpty()) {
@@ -185,7 +185,7 @@ public class Crucible extends VirtualizedRegistry<CrucibleRecipe> {
         public void validate(GroovyLog.Msg msg) {
             validateItems(msg, 0, 0, 1, 1);
             msg.add(IngredientHelper.isEmpty(catalyst), () -> "Catalyst must not be empty");
-            msg.add(IngredientHelper.overMaxSize(catalyst, 1), () -> "Catalyst amount must be 1");
+            validateStackSize(msg, 1, "catalyst", catalyst);
             msg.add(aspects.size() == 0, () -> "Aspects must not be empty");
             if (researchKey == null) researchKey = "";
         }

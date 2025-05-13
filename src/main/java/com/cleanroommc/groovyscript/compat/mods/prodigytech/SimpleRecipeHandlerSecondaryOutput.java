@@ -74,8 +74,8 @@ public abstract class SimpleRecipeHandlerSecondaryOutput extends SimpleRecipeHan
             SimpleRecipeSecondaryOutput recipe = null;
             IIngredient input1 = input.get(0);
             ItemStack secondaryOutput = output.size() == 1 ? ItemStack.EMPTY : output.get(1);
-            if (input1 instanceof OreDictIngredient) {
-                recipe = new SimpleRecipeSecondaryOutput(((OreDictIngredient) input1).getOreDict(), output.get(0), secondaryOutput, time, secondaryChance);
+            if (input1 instanceof OreDictIngredient oreDictIngredient) {
+                recipe = new SimpleRecipeSecondaryOutput(oreDictIngredient.getOreDict(), output.get(0), secondaryOutput, time, secondaryChance);
                 addRecipe(recipe);
             } else {
                 for (ItemStack input : input1.getMatchingStacks()) {
@@ -87,7 +87,7 @@ public abstract class SimpleRecipeHandlerSecondaryOutput extends SimpleRecipeHan
         }
     }
 
-    @RegistryDescription
+    @RegistryDescription(override = @MethodOverride(method = @MethodDescription(method = "removeByInput", example = @Example("ore('plankWood')"))))
     public static class HeatSawmill extends SimpleRecipeHandlerSecondaryOutput {
 
         HeatSawmill() {
@@ -98,15 +98,9 @@ public abstract class SimpleRecipeHandlerSecondaryOutput extends SimpleRecipeHan
         protected int getDefaultTime() {
             return Config.heatSawmillProcessTime;
         }
-
-        @Override
-        @MethodDescription(example = @Example("ore('plankWood')"))
-        public boolean removeByInput(IIngredient input) {
-            return super.removeByInput(input);
-        }
     }
 
-    @RegistryDescription
+    @RegistryDescription(override = @MethodOverride(method = @MethodDescription(method = "removeByInput", example = @Example("ore('oreLapis')"))))
     public static class OreRefinery extends SimpleRecipeHandlerSecondaryOutput {
 
         OreRefinery() {
@@ -116,12 +110,6 @@ public abstract class SimpleRecipeHandlerSecondaryOutput extends SimpleRecipeHan
         @Override
         protected int getDefaultTime() {
             return Config.oreRefineryProcessTime;
-        }
-
-        @Override
-        @MethodDescription(example = @Example("ore('oreLapis')"))
-        public boolean removeByInput(IIngredient input) {
-            return super.removeByInput(input);
         }
     }
 }

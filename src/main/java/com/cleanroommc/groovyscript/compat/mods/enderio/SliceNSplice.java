@@ -74,9 +74,9 @@ public class SliceNSplice extends StandardListRegistry<IManyToOneRecipe> {
     @MethodDescription(example = @Example("[item('enderio:item_alloy_ingot:7'), item('enderio:block_enderman_skull'), item('enderio:item_alloy_ingot:7'), item('minecraft:potion').withNbt(['Potion': 'minecraft:water']), item('enderio:item_basic_capacitor'), item('minecraft:potion').withNbt(['Potion': 'minecraft:water'])]"))
     public void removeByInput(List<ItemStack> input) {
         IRecipe recipe = SliceAndSpliceRecipeManager.getInstance().getRecipeForInputs(RecipeLevel.IGNORE, RecipeUtils.getMachineInputs(input));
-        if (recipe instanceof IManyToOneRecipe) {
+        if (recipe instanceof IManyToOneRecipe iManyToOneRecipe) {
             getRecipes().remove(recipe);
-            addBackup((IManyToOneRecipe) recipe);
+            addBackup(iManyToOneRecipe);
         } else {
             GroovyLog.get().error("No EnderIO Slice'n'Splice recipe found for " + input);
         }
@@ -113,9 +113,7 @@ public class SliceNSplice extends StandardListRegistry<IManyToOneRecipe> {
             int inputSize = input.getRealSize();
             output.trim();
             msg.add(inputSize < 1 || inputSize > 6, () -> "Must have 1 - 6 inputs, but found " + input.size());
-            for (IIngredient ingredient : input) {
-                msg.add(IngredientHelper.overMaxSize(ingredient, 1), "Input {} must have a stack size of 1", ingredient);
-            }
+            validateStackSize(msg, 1, "input", input);
             msg.add(output.size() != 1, () -> "Must have exactly 1 output, but found " + output.size());
             validateFluids(msg);
             if (energy <= 0) energy = 5000;

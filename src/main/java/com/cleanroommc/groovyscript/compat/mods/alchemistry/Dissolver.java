@@ -51,7 +51,6 @@ public class Dissolver extends StandardListRegistry<DissolverRecipe> {
     }
 
     @Property(property = "input", comp = @Comp(eq = 1))
-    @Property(property = "output", comp = @Comp(eq = 1))
     public static class RecipeBuilder extends AbstractRecipeBuilder<DissolverRecipe> {
 
         @Property(comp = @Comp(gte = 1))
@@ -82,6 +81,12 @@ public class Dissolver extends StandardListRegistry<DissolverRecipe> {
 
         @RecipeBuilderMethodDescription(field = "probabilityGroup")
         public RecipeBuilder probabilityOutput(Collection<ItemStack> probabilityOutputs) {
+            return this.probabilityOutput(100, probabilityOutputs);
+        }
+
+        @Override
+        @RecipeBuilderMethodDescription(field = "probabilityGroup")
+        public RecipeBuilder output(ItemStack probabilityOutputs) {
             return this.probabilityOutput(100, probabilityOutputs);
         }
 
@@ -140,10 +145,9 @@ public class Dissolver extends StandardListRegistry<DissolverRecipe> {
             msg.add(rolls < 1, "rolls must be greater than or equal to 1, yet it was {}", rolls);
         }
 
-        @Nullable
         @Override
         @RecipeBuilderRegistrationMethod
-        public DissolverRecipe register() {
+        public @Nullable DissolverRecipe register() {
             if (!validate()) return null;
 
             DissolverRecipe recipe = new DissolverRecipe(input.get(0).toMcIngredient(), false, new ProbabilitySet(probabilityGroup, relativeProbability, rolls));

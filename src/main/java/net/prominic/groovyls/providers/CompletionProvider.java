@@ -19,10 +19,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 package net.prominic.groovyls.providers;
 
-import com.cleanroommc.groovyscript.mapper.ObjectMapper;
+import com.cleanroommc.groovyscript.GroovyScript;
+import com.cleanroommc.groovyscript.mapper.AbstractObjectMapper;
+import com.cleanroommc.groovyscript.server.CompletionParams;
 import com.cleanroommc.groovyscript.server.Completions;
 import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
+import groovy.lang.Script;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.FieldInfo;
 import io.github.classgraph.MethodInfo;
@@ -178,16 +181,23 @@ public class CompletionProvider extends DocProvider {
             ASTNode parentParent = astContext.getVisitor().getParent(parent);
             if (parentParent instanceof MethodCallExpression expr && expr.getArguments() instanceof ArgumentListExpression args && !args.getExpressions().isEmpty()) {
                 // TODO completions in file()
-                ObjectMapper<?> goh = GroovyASTUtils.getMapperOfNode(expr, astContext);
-                if (goh != null && goh.getCompleter() != null) {
+                AbstractObjectMapper<?> mapper = GroovyASTUtils.getMapperOfNode(expr, astContext);
+                if (mapper != null) {
+                    CompletionParams params = CompletionParams.EMPTY;
                     int index = -1;
                     for (int i = 0; i < args.getExpressions().size(); i++) {
-                        if (args.getExpression(i) == node) {
+                        Expression arg = args.getExpression(i);
+                        if (arg instanceof ConstantExpression constArg) {
+                            params = CompletionParams.addParam(params, constArg.getValue());
+                        } else {
+                            params = CompletionParams.addUnparsableParam(params);
+                        }
+                        if (arg == node) {
                             index = i;
                             break;
                         }
                     }
-                    goh.getCompleter().complete(index, items);
+                    mapper.provideCompletion(index, params, items);
                 }
             }
             return false; // don't complete keyword in strings
@@ -281,9 +291,9 @@ public class CompletionProvider extends DocProvider {
         if (classRange == null) return;
         String className = getMemberName(classNode.getUnresolvedName(), classRange, position);
         if (classNode.equals(parentClassNode.getUnresolvedSuperClass())) {
-            populateTypes(classNode, className, new HashSet<>(), true, false, false, items);
+            populateTypes(classNode, className, new ObjectOpenHashSet<>(), true, false, false, items);
         } else if (Arrays.asList(parentClassNode.getUnresolvedInterfaces()).contains(classNode)) {
-            populateTypes(classNode, className, new HashSet<>(), false, true, false, items);
+            populateTypes(classNode, className, new ObjectOpenHashSet<>(), false, true, false, items);
         }
     }
 
@@ -293,7 +303,7 @@ public class CompletionProvider extends DocProvider {
         Range typeRange = GroovyLSUtils.astNodeToRange(constructorCallExpr.getType());
         if (typeRange == null) return;
         String typeName = getMemberName(constructorCallExpr.getType().getNameWithoutPackage(), typeRange, position);
-        populateTypes(constructorCallExpr, typeName, new HashSet<>(), true, false, false, items);
+        populateTypes(constructorCallExpr, typeName, new ObjectOpenHashSet<>(), true, false, false, items);
     }
 
     private void populateItemsFromVariableExpression(VariableExpression varExpr, Position position, Completions items) {
@@ -311,6 +321,7 @@ public class CompletionProvider extends DocProvider {
             String name = p.getName();
             if (!p.isPublic() || existingNames.contains(name)) return null;
             existingNames.add(name);
+            if (p.getDeclaringClass().isDerivedFrom(ClassHelper.makeCached(Script.class)) && p.getName().equals("__$stMC")) return null;
             CompletionItem item = CompletionItemFactory.createCompletion(p, p.getName(), astContext);
             if (!p.isDynamicTyped()) {
                 var details = new CompletionItemLabelDetails();
@@ -323,6 +334,7 @@ public class CompletionProvider extends DocProvider {
             String name = f.getName();
             if (!f.isPublic() || existingNames.contains(name)) return null;
             existingNames.add(name);
+            if (f.getDeclaringClass().isDerivedFrom(ClassHelper.makeCached(Script.class)) && f.getName().equals("__$stMC")) return null;
             CompletionItem item = CompletionItemFactory.createCompletion(f, f.getName(), astContext);
             if (!f.isDynamicTyped()) {
                 var details = new CompletionItemLabelDetails();
@@ -338,6 +350,9 @@ public class CompletionProvider extends DocProvider {
             String name = getDescriptor(method, true, false, false);
             if (!method.isPublic() || existingNames.contains(name)) return null;
             existingNames.add(name);
+            if (method.getDeclaringClass().isDerivedFrom(ClassHelper.makeCached(Script.class))) {
+                if (method.getName().equals("$getLookup") || method.getName().equals("main")) return null;
+            }
             if (method.getDeclaringClass().isResolved() && (method.getModifiers() & GroovyASTUtils.EXPANSION_MARKER) == 0 && GroovyReflectionUtils.resolveMethodFromMethodNode(method, astContext) == null) {
                 return null;
             }
@@ -432,7 +447,9 @@ public class CompletionProvider extends DocProvider {
         }
         builder.append(")");
         if (!includeReturn) return builder.toString();
-        var ret = display ? node.getTypeSignatureOrTypeDescriptor().getResultType().toStringWithSimpleNames() : node.getTypeDescriptor().getResultType().toString();
+        var ret = display
+                ? node.getTypeSignatureOrTypeDescriptor().getResultType().toStringWithSimpleNames()
+                : node.getTypeDescriptor().getResultType().toString();
         if (!ret.equals("void")) {
             if (display) builder.append(" -> ");
             builder.append(ret);
@@ -441,22 +458,21 @@ public class CompletionProvider extends DocProvider {
     }
 
     public static StringBuilder appendParameter(MethodParameterInfo param, StringBuilder builder, boolean display, boolean maybeVarargs) {
-        builder.append(display ? param.getTypeSignatureOrTypeDescriptor().toStringWithSimpleNames() : param.getTypeDescriptor().toString()); // don't use generic types
+        builder.append(
+                display ? param.getTypeSignatureOrTypeDescriptor().toStringWithSimpleNames() : param.getTypeDescriptor().toString()); // don't use generic types
         if (maybeVarargs && builder.charAt(builder.length() - 1) == ']' && builder.charAt(builder.length() - 2) == '[') {
             builder.delete(builder.length() - 2, builder.length()).append("...");
         }
         return builder;
     }
 
-    @NotNull
-    private static CompletionItemLabelDetails getMethodNodeDetails(MethodNode method) {
+    private static @NotNull CompletionItemLabelDetails getMethodNodeDetails(MethodNode method) {
         var details = new CompletionItemLabelDetails();
         details.setDetail(getDescriptor(method, false, true, true));
         return details;
     }
 
-    @NotNull
-    private static CompletionItemLabelDetails getMethodInfoDetails(MethodInfo methodInfo) {
+    private static @NotNull CompletionItemLabelDetails getMethodInfoDetails(MethodInfo methodInfo) {
         var details = new CompletionItemLabelDetails();
         details.setDetail(getDescriptor(methodInfo, false, true, true));
         return details;
@@ -481,7 +497,7 @@ public class CompletionProvider extends DocProvider {
             String name = entry.getKey();
             if (!name.toLowerCase(Locale.ENGLISH).contains(memberNamePrefix) || existingNames.contains(name)) return null;
             existingNames.add(name);
-            if (entry.getValue() instanceof ObjectMapper<?>goh) {
+            if (entry.getValue() instanceof AbstractObjectMapper<?>goh) {
                 for (MethodNode method : goh.getMethodNodes()) {
                     var item = CompletionItemFactory.createCompletion(method, goh.getName(), astContext);
                     item.setLabelDetails(getMethodNodeDetails(method));
@@ -621,7 +637,14 @@ public class CompletionProvider extends DocProvider {
 
         ModuleNode enclosingModule = getModule();
         String enclosingPackageName = enclosingModule.getPackageName();
-        items.addAll(astContext.getVisitor().getClassNodes(), classNode -> {
+        List<ClassNode> classNodes = astContext.getVisitor().getClassNodes();
+        Set<ClassNode> all = new ObjectOpenHashSet<>();
+        all.addAll(classNodes);
+        for (Class<?> clz : GroovyScript.getSandbox().getEngine().getAllLoadedScriptClasses()) {
+            //if (Script.class.isAssignableFrom(clz)) continue;
+            all.add(ClassHelper.makeCached(clz));
+        }
+        items.addAll(all, classNode -> {
             if (!includeEnums && classNode.isEnum()) return null;
             if (!includeInterfaces && classNode.isInterface()) return null;
             if (!includeClasses && (!classNode.isInterface() && !classNode.isEnum())) return null;
